@@ -86,3 +86,55 @@ async def create_reservation(payload: ReservationCreate, db: AsyncSession = Depe
         final_price=final_price,
         created_at=created_at,
     )
+import pytest
+
+
+@pytest.mark.anyio
+async def test_create_reservation_member_not_found_returns_404(client):
+    # create class
+    c = await client.post(
+        "/classes",
+        json={
+            "name": "Pilates",
+            "instructor": "Coach",
+            "capacity": 2,
+            "start_time": "2025-12-01T10:00:00",
+        },
+    )
+    assert c.status_code == 201
+    class_id = c.json()["id"]
+
+    # member does not exist
+    r = await client.post(
+        "/reservations",
+        json={
+            "member_id": "does-not-exist",
+            "class_id": class_id,
+            "base_price": 100,
+        },
+    )
+
+    assert r.status_code in (400, 404)
+
+
+@pytest.mark.anyio
+async def test_create_reservation_class_not_found_returns_404(client):
+    # create member
+    m = await client.post(
+        "/members",
+        json={"name": "Test User", "membership_type": "standard"},
+    )
+    assert m.status_code == 201
+    member_id = m.json()["id"]
+
+    # class does not exist
+    r = await client.post(
+        "/reservations",
+        json={
+            "member_id": member_id,
+            "class_id": "does-not-exist",
+            "base_price": 100,
+        },
+    )
+
+    assert r.status_code in (400, 404)
